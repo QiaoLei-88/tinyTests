@@ -31,28 +31,51 @@
 
 #include <fstream>
 #include <ostream>
+#include <unistd.h>
 
 template<int dim>
+
 void test()
 {
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
+  const unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
 
   if (true)
     {
       if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
         deallog << "hyper_cube" << std::endl;
 
-      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD,
+                                                   dealii::Triangulation<dim>::none);
+      //limit_level_difference_at_vertices
 
       GridGenerator::hyper_cube(tr);
       tr.refine_global(1);
 
+      unsigned int level = 0;
       while (tr.n_global_active_cells() < 20000/Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
         {
           if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-            deallog << "refine_loop..." << std::endl;
+            {
+              deallog << "refine_loop..." << std::endl;
+              std::cerr <<"level: " << level
+                        <<", n_global_active_cells: " << tr.n_global_active_cells()
+                        << std::endl;
+            }
+          usleep(20);
+          MPI_Barrier(MPI_COMM_WORLD);
+          for (unsigned int my_id = 0; my_id<Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD); ++my_id)
+            {
+              MPI_Barrier(MPI_COMM_WORLD);
+              if (my_id == Utilities::MPI::this_mpi_process (MPI_COMM_WORLD))
+                {
+                  std::cerr <<"level: " << level
+                            << ", myid: " << Utilities::MPI::this_mpi_process (MPI_COMM_WORLD)
+                            << ", n_active_cells: " << tr.n_active_cells() << std::endl;
+                  usleep(20);
+                }
+              MPI_Barrier(MPI_COMM_WORLD);
+            }
           std::vector<bool> flags (tr.n_active_cells(), false);
-
           // refine one fifth of all cells each
           // time (but at least one).
           // note that only the own marked cells
@@ -67,7 +90,7 @@ void test()
           for (typename Triangulation<dim>::active_cell_iterator
                cell = tr.begin_active();
                cell != tr.end(); ++cell, ++index)
-            if (flags[index])
+            if (flags[index] && cell->is_locally_owned())
               {
                 cell->set_refine_flag();
               }
@@ -79,6 +102,7 @@ void test()
             {
               deallog << "#cells = " << tr.n_global_active_cells() << std::endl;
             }
+          ++level;
         }
     }
 
