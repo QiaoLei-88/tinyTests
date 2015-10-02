@@ -1,0 +1,7 @@
+Makefile
+cmake_install.cmake
+CMakeCache*
+CMakeFiles
+testOne
+.ninja*
+
