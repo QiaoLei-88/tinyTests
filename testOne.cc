@@ -122,7 +122,7 @@ int main (int argc, char *argv[])
       deallog << "Flag limit_level_difference_at_vertices set:" << std::endl;
     }
   {
-    TriaTest<dim> tria_test(dealii::Triangulation<dim>::limit_level_difference_at_vertices);
+    TriaTest<dim> tria_test(typename dealii::Triangulation<dim>::MeshSmoothing (dealii::Triangulation<dim>::limit_level_difference_at_vertices | dealii::Triangulation<dim>::eliminate_refined_inner_islands));
     tria_test.run(n_cell_smooth, final_cell_center_loactions_smooth);
   }
   if (I_am_host)
@@ -130,7 +130,7 @@ int main (int argc, char *argv[])
       deallog << "Flag limit_level_difference_at_vertices unset:" << std::endl;
     }
   {
-    TriaTest<dim> tria_test(dealii::Triangulation<dim>::none);
+    TriaTest<dim> tria_test(typename dealii::Triangulation<dim>::MeshSmoothing (dealii::Triangulation<dim>::none | dealii::Triangulation<dim>::eliminate_refined_inner_islands));
     tria_test.run(n_cell_no_smooth, final_cell_center_loactions_no_smooth);
   }
   if (I_am_host)
@@ -219,25 +219,26 @@ void TriaTest<dim>::run(std::vector<unsigned int> &n_cell,
 
   for (; counter < 5; ++counter)
     {
-      {
-        Point<dim> p;
-        for (unsigned int d=0; d<dim; ++d)
-          {
-            p[d] = 0.5 - std::pow(0.5, 1.0 + counter);
-          }
-        typename TypeTria::active_cell_iterator
-        cell = triangulation.begin_active();
-        for (; cell!= triangulation.end(); ++cell)
-          // if (cell->is_locally_owned() && ((cell->center()).distance(p) < 1e-4))
-            {
-              cell->set_refine_flag();
-            }
-      }
+      // {
+      //   Point<dim> p;
+      //   for (unsigned int d=0; d<dim; ++d)
+      //     {
+      //       p[d] = 0.5 - std::pow(0.5, 1.0 + counter);
+      //     }
+      //   typename TypeTria::active_cell_iterator
+      //   cell = triangulation.begin_active();
+      //   for (; cell!= triangulation.end(); ++cell)
+      //     // if (cell->is_locally_owned() && ((cell->center()).distance(p) < 1e-4))
+      //       {
+      //         cell->set_refine_flag();
+      //       }
+      // }
 
-      triangulation.prepare_coarsening_and_refinement();
+      // triangulation.prepare_coarsening_and_refinement();
+      // write_vtu(counter);
+      // triangulation.execute_coarsening_and_refinement();
       write_vtu(counter);
-      triangulation.execute_coarsening_and_refinement();
-
+      triangulation.refine_global(1);
       if (I_am_host)
         {
           deallog << counter << "       "
@@ -293,12 +294,21 @@ void TriaTest<dim>::write_vtu(const unsigned int counter) const
             cell->refine_flag_set();
         }
   }
+  Vector<float> subdomain;
+  subdomain.reinit (triangulation.n_active_cells());
+  std::fill(subdomain.begin(), subdomain.end(), myid);
 
   DataOut<dim> data_out;
   data_out.attach_triangulation (triangulation);
   {
     const std::string data_name ("refine_flag");
     data_out.add_data_vector (refine_mark,
+                              data_name,
+                              DataOut<dim>::type_cell_data);
+  }
+  {
+    const std::string data_name ("subdomain");
+    data_out.add_data_vector (subdomain,
                               data_name,
                               DataOut<dim>::type_cell_data);
   }

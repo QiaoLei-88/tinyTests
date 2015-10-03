@@ -1,18 +1,18 @@
-JobId charm Sat Oct  3 15:25:39 2015
+JobId charm Sat Oct  3 15:45:19 2015
 DEAL:2d::Flag limit_level_difference_at_vertices set:
 DEAL:2d::n_loop  n_cell
 DEAL:2d::0       9
-DEAL:2d::1       36
-DEAL:2d::2       144
-DEAL:2d::3       576
-DEAL:2d::4       2304
+DEAL:2d::1       33
+DEAL:2d::2       132
+DEAL:2d::3       528
+DEAL:2d::4       2112
 DEAL:2d::Flag limit_level_difference_at_vertices unset:
 DEAL:2d::n_loop  n_cell
 DEAL:2d::0       9
-DEAL:2d::1       36
-DEAL:2d::2       144
-DEAL:2d::3       576
-DEAL:2d::4       2304
+DEAL:2d::1       33
+DEAL:2d::2       132
+DEAL:2d::3       528
+DEAL:2d::4       2112
 DEAL:2d::Compare result:
 DEAL:2d::n_cells_are_same = 1
 DEAL:2d::cell_center_loactions_are_same = 1
