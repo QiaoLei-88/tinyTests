@@ -44,8 +44,8 @@ void test()
       if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
         deallog << "hyper_cube" << std::endl;
 
-      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD,
-                                                   dealii::Triangulation<dim>::none);
+      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+      //dealii::Triangulation<dim>::none
       //limit_level_difference_at_vertices
 
       GridGenerator::hyper_cube(tr);
