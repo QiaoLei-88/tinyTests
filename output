@@ -1,21 +1,18 @@
-JobId charm Fri Oct  2 14:33:12 2015
-DEAL:0:2d::hyper_cube
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 7
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 16
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 31
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 64
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 136
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 256
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 505
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 982
-DEAL:0:2d::refine_loop...
-DEAL:0:2d::#cells = 2059
-DEAL:0:2d::OK
+JobId charm Sat Oct  3 15:25:39 2015
+DEAL:2d::Flag limit_level_difference_at_vertices set:
+DEAL:2d::n_loop  n_cell
+DEAL:2d::0       9
+DEAL:2d::1       36
+DEAL:2d::2       144
+DEAL:2d::3       576
+DEAL:2d::4       2304
+DEAL:2d::Flag limit_level_difference_at_vertices unset:
+DEAL:2d::n_loop  n_cell
+DEAL:2d::0       9
+DEAL:2d::1       36
+DEAL:2d::2       144
+DEAL:2d::3       576
+DEAL:2d::4       2304
+DEAL:2d::Compare result:
+DEAL:2d::n_cells_are_same = 1
+DEAL:2d::cell_center_loactions_are_same = 1
