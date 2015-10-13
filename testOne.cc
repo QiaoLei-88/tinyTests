@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------
 //
-// Copyright (C) 2009 - 2014 by the deal.II authors
+// Copyright (C) 2015 by the deal.II authors
 //
 // This file is part of the deal.II library.
 //
@@ -14,100 +14,186 @@
 // ---------------------------------------------------------------------
 
 
-
-// recursively refine a 2d mesh
+// test signals of Triangulation class
 
 #include "../tests.h"
-#include "coarse_grid_common.h"
-#include <deal.II/base/logstream.h>
-#include <deal.II/base/tensor.h>
 #include <deal.II/grid/tria.h>
-#include <deal.II/distributed/tria.h>
-#include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/grid_out.h>
-#include <deal.II/grid/grid_tools.h>
-#include <deal.II/base/utilities.h>
 
-#include <fstream>
-#include <ostream>
+int signal_counter_create = 0;
+int signal_counter_pre_refinement = 0;
+int signal_counter_post_refinement = 0;
+int signal_counter_pre_coarsening_on_cell = 0;
+int signal_counter_post_refinement_on_cell = 0;
+int signal_counter_copy = 0;
+int signal_counter_clear = 0;
+int signal_counter_any_change = 0;
 
-template<int dim>
-void test()
+void f_create ()
 {
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
+  ++signal_counter_create;
+  return;
+}
 
-  if (true)
-    {
-      if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-        deallog << "hyper_cube" << std::endl;
+void f_pre_refinement ()
+{
+  ++signal_counter_pre_refinement;
+  return;
+}
 
-      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+void f_post_refinement ()
+{
+  ++signal_counter_post_refinement;
+  return;
+}
 
-      GridGenerator::hyper_cube(tr);
-      tr.refine_global(1);
+template<int dim, int spacedim>
+void f_pre_coarsening_on_cell (const typename Triangulation<dim, spacedim>::cell_iterator &)
+{
+  ++signal_counter_pre_coarsening_on_cell;
+  return;
+}
 
-      while (tr.n_global_active_cells() < 20000/Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
-        {
-          if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-            deallog << "refine_loop..." << std::endl;
-          std::vector<bool> flags (tr.n_active_cells(), false);
+template<int dim, int spacedim>
+void f_post_refinement_on_cell (const typename Triangulation<dim, spacedim>::cell_iterator &)
+{
+  ++signal_counter_post_refinement_on_cell;
+  return;
+}
 
-          // refine one fifth of all cells each
-          // time (but at least one).
-          // note that only the own marked cells
-          // will be refined.
-          for (unsigned int i=0; i<tr.n_active_cells() / 5 + 1; ++i)
-            {
-              const unsigned int x = Testing::rand() % flags.size();
-              flags[x] = true;
-            }
+template<int dim, int spacedim>
+void f_copy (const Triangulation<dim, spacedim> &)
+{
+  ++signal_counter_copy;
+  return;
+}
 
-          unsigned int index=0;
-          for (typename Triangulation<dim>::active_cell_iterator
-               cell = tr.begin_active();
-               cell != tr.end(); ++cell, ++index)
-            if (flags[index])
-              {
-                cell->set_refine_flag();
-              }
+void f_clear ()
+{
+  ++signal_counter_clear;
+  return;
+}
 
-          Assert (index == tr.n_active_cells(), ExcInternalError());
-          tr.execute_coarsening_and_refinement ();
-
-          if (myid == 0)
-            {
-              deallog << "#cells = " << tr.n_global_active_cells() << std::endl;
-            }
-        }
-    }
-
-  if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-    deallog << "OK" << std::endl;
+void f_any_change ()
+{
+  ++signal_counter_any_change;
+  return;
 }
 
 
+template<int dim, int spacedim>
+void test()
+{
+  signal_counter_create = 0;
+  signal_counter_pre_refinement = 0;
+  signal_counter_post_refinement = 0;
+  signal_counter_pre_coarsening_on_cell = 0;
+  signal_counter_post_refinement_on_cell = 0;
+  signal_counter_copy = 0;
+  signal_counter_clear = 0;
+  signal_counter_any_change = 0;
+
+  {
+    const std::string title = Utilities::int_to_string (dim, 1) +
+                              "d-" +
+                              Utilities::int_to_string (spacedim, 1) +
+                              "d";
+    deallog.push(title.c_str());
+  }
+
+  Triangulation<dim, spacedim> tria;
+
+  tria.signals.create.connect (&f_create);
+  tria.signals.pre_refinement.connect (&f_pre_refinement);
+  tria.signals.post_refinement.connect (&f_post_refinement);
+  tria.signals.pre_coarsening_on_cell.connect (&f_pre_coarsening_on_cell<dim,spacedim>);
+  tria.signals.post_refinement_on_cell.connect (&f_post_refinement_on_cell<dim,spacedim>);
+  tria.signals.copy.connect (&f_copy<dim,spacedim>);
+  tria.signals.clear.connect (&f_clear);
+  tria.signals.any_change.connect (&f_any_change);
+
+  GridGenerator::hyper_cube(tria);
+  tria.refine_global(2);
+
+  // Test signal on copying
+  {
+    Triangulation<dim, spacedim> tria_cpoier;
+    tria_cpoier.copy_triangulation(tria);
+  }
+
+  // Test signal on coarsening
+  {
+    typename Triangulation<dim, spacedim>::active_cell_iterator
+    cell = tria.begin_active();
+    const typename Triangulation<dim, spacedim>::active_cell_iterator
+    endc = tria.end();
+    for (; cell != endc; ++cell)
+      {
+        cell->set_coarsen_flag();
+      }
+    tria.execute_coarsening_and_refinement();
+  }
+
+  tria.clear();
+
+  deallog << "n_signal_create : " << signal_counter_create << std::endl;
+  deallog << "n_signal_pre_refinement : " << signal_counter_pre_refinement << std::endl;
+  deallog << "n_signal_post_refinement : " << signal_counter_post_refinement << std::endl;
+  deallog << "n_signal_pre_coarsening_on_cell : " << signal_counter_pre_coarsening_on_cell << std::endl;
+  deallog << "n_signal_post_refinement_on_cell : " << signal_counter_post_refinement_on_cell << std::endl;
+  deallog << "n_signal_copy : " << signal_counter_copy << std::endl;
+  deallog << "n_signal_clear : " << signal_counter_clear << std::endl;
+  deallog << "n_signal_any_change : " << signal_counter_any_change << std::endl;
+
+  deallog.pop();
+  deallog << std::endl << std::endl;
+
+  return;
+}
+
 int main(int argc, char *argv[])
 {
-  Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv, 1);
 
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
+  std::ofstream logfile("output");
+  deallog.attach(logfile);
+  deallog.depth_console(0);
+  deallog.threshold_double(1.e-10);
 
+  {
+    const int dim = 1;
+    const int spacedim = 1;
+    test<dim,spacedim> ();
+  }
 
-  deallog.push(Utilities::int_to_string(myid));
+  {
+    const int dim = 1;
+    const int spacedim = 2;
+    test<dim,spacedim> ();
+  }
 
-  if (myid == 0)
-    {
-      std::ofstream logfile("output");
-      deallog.attach(logfile);
-      deallog.depth_console(0);
-      deallog.threshold_double(1.e-10);
+  {
+    const int dim = 1;
+    const int spacedim = 3;
+    test<dim,spacedim> ();
+  }
 
-      deallog.push("2d");
-      test<2>();
-      deallog.pop();
-    }
-  else
-    test<2>();
+  {
+    const int dim = 2;
+    const int spacedim = 2;
+    test<dim,spacedim> ();
+  }
 
+  {
+    const int dim = 2;
+    const int spacedim = 3;
+    test<dim,spacedim> ();
+  }
+
+  {
+    const int dim = 3;
+    const int spacedim = 3;
+    test<dim,spacedim> ();
+  }
+
+  return (0);
 }
