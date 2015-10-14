@@ -14,100 +14,63 @@
 // ---------------------------------------------------------------------
 
 
-
-// recursively refine a 2d mesh
-
 #include "../tests.h"
-#include "coarse_grid_common.h"
-#include <deal.II/base/logstream.h>
-#include <deal.II/base/tensor.h>
+
+#include <deal.II/base/std_cxx11/bind.h>
 #include <deal.II/grid/tria.h>
-#include <deal.II/distributed/tria.h>
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/grid_out.h>
-#include <deal.II/grid/grid_tools.h>
-#include <deal.II/base/utilities.h>
+#include <iostream>
 
-#include <fstream>
-#include <ostream>
 
-template<int dim>
-void test()
+struct ClassA
 {
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
+  boost::signals2::signal<void ()>    SigA;
+  boost::signals2::signal<void (int)> SigB;
+};
 
-  if (true)
-    {
-      if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-        deallog << "hyper_cube" << std::endl;
+struct ClassB
+{
+  virtual void PrintFoo()
+  {
+    std::cout << "ClassB::Foo" << std::endl;
+  }
+  virtual void PrintInt(int i)
+  {
+    std::cout << "ClassB::Bar: " << i << std::endl;
+  }
+};
 
-      parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+struct ClassC : public ClassB
+{
+  virtual void PrintFoo()
+  {
+    std::cout << "ClassC::Foo" << std::endl;
+  }
+  virtual void PrintInt(int i)
+  {
+    std::cout << "ClassC::Bar: " << i << std::endl;
+  }
+};
 
-      GridGenerator::hyper_cube(tr);
-      tr.refine_global(1);
+int main()
+{
+  ClassA a;
+  ClassB b, b2;
 
-      while (tr.n_global_active_cells() < 20000/Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
-        {
-          if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-            deallog << "refine_loop..." << std::endl;
-          std::vector<bool> flags (tr.n_active_cells(), false);
+  ClassB *c1 = new ClassC;
+  ClassC *c2 = new ClassC;
 
-          // refine one fifth of all cells each
-          // time (but at least one).
-          // note that only the own marked cells
-          // will be refined.
-          for (unsigned int i=0; i<tr.n_active_cells() / 5 + 1; ++i)
-            {
-              const unsigned int x = Testing::rand() % flags.size();
-              flags[x] = true;
-            }
+  a.SigA.connect(dealii::std_cxx11::bind(&ClassB::PrintFoo, &b));
+  a.SigB.connect(std::bind(&ClassB::PrintInt, &b,  std::placeholders::_1));
+  a.SigB.connect(std::bind(&ClassB::PrintInt, &b2, std::placeholders::_1));
+  a.SigB.connect(std::bind(&ClassB::PrintInt, c1,  std::placeholders::_1));
+  a.SigB.connect(std::bind(&ClassC::PrintInt, c2,  std::placeholders::_1));
 
-          unsigned int index=0;
-          for (typename Triangulation<dim>::active_cell_iterator
-               cell = tr.begin_active();
-               cell != tr.end(); ++cell, ++index)
-            if (flags[index])
-              {
-                cell->set_refine_flag();
-              }
+  a.SigA();
+  a.SigB(4);
 
-          Assert (index == tr.n_active_cells(), ExcInternalError());
-          tr.execute_coarsening_and_refinement ();
+  delete c1;
+  delete c2;
 
-          if (myid == 0)
-            {
-              deallog << "#cells = " << tr.n_global_active_cells() << std::endl;
-            }
-        }
-    }
-
-  if (Utilities::MPI::this_mpi_process (MPI_COMM_WORLD) == 0)
-    deallog << "OK" << std::endl;
+  return (0);
 }
 
-
-int main(int argc, char *argv[])
-{
-  Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv, 1);
-
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
-
-
-  deallog.push(Utilities::int_to_string(myid));
-
-  if (myid == 0)
-    {
-      std::ofstream logfile("output");
-      deallog.attach(logfile);
-      deallog.depth_console(0);
-      deallog.threshold_double(1.e-10);
-
-      deallog.push("2d");
-      test<2>();
-      deallog.pop();
-    }
-  else
-    test<2>();
-
-}
