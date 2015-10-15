@@ -23,15 +23,15 @@
 #include <fstream>
 #include <ostream>
 
-// Test on whether signals post_refinement_on_cell and pre_coarsening_on_cell
-// could catch all cell changes.
-// The test is designed to count cell number increase and decrease in signal
-// calls and then compare the result against n_active_cells reported by Tria
-// object. Absolute value change in n_active_cells is not concerned in this test.
-
-// This test is based on tria_signals_03. The difference is here we have all
-// smoothing flags enabled. Also increase refine fraction to one third to prevent
-// refine flags getting smoothed out.
+// This is a test for test driver itself. Signals on refinement is disabled,
+// so non-positive n_active_cell_gap is expected. Thus we can make sure the
+// SignalListener class is not just report zero results blindly, and both
+// signals on refinement and coarsening are working.
+//
+// However, if this test failed, it is not necessarily the signals are wrong.
+// The reason can also be that the adaptation mechanism is changed.
+//
+// This test is modified from tria_signals_04.
 
 template<int dim, int spacedim>
 class SignalListener
@@ -42,10 +42,10 @@ public:
     n_active_cells(tria_in.n_active_cells()),
     tria(tria_in)
   {
-    tria_in.signals.post_refinement_on_cell.connect
-    (std_cxx11::bind (&SignalListener<dim, spacedim>::count_on_refine,
-                      this,
-                      std_cxx11::placeholders::_1));
+    // tria_in.signals.post_refinement_on_cell.connect
+    // (std_cxx11::bind (&SignalListener<dim, spacedim>::count_on_refine,
+    //                   this,
+    //                   std_cxx11::placeholders::_1));
 
     tria_in.signals.pre_coarsening_on_cell.connect
     (std_cxx11::bind (&SignalListener<dim, spacedim>::count_on_coarsen,
