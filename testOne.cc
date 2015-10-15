@@ -29,8 +29,9 @@
 // calls and then compare the result against n_active_cells reported by Tria
 // object. Absolute value change in n_active_cells is not concerned in this test.
 
-// This test is based on tria_signals_02. The difference is here we have random
-// and mix refinement and coarsening.
+// This test is based on tria_signals_03. The difference is here we have all
+// smoothing flags enabled. Also increase refine fraction to one third to prevent
+// refine flags getting smoothed out.
 
 template<int dim, int spacedim>
 class SignalListener
@@ -93,7 +94,13 @@ void test()
     deallog.push(prefix.c_str());
   }
 
-  TriaType tria(MPI_COMM_WORLD);
+  // Option dealii::Triangulation<dim, spacedim>::maximum_smoothing can't
+  // run in parallel at the time that this test is created.
+  TriaType tria(MPI_COMM_WORLD,
+                typename dealii::Triangulation<dim, spacedim>::MeshSmoothing
+                (dealii::Triangulation<dim, spacedim>::smoothing_on_refinement |
+                 dealii::Triangulation<dim, spacedim>::smoothing_on_coarsening));
+
 
   GridGenerator::hyper_cube(tria);
   SignalListener<dim, spacedim> count_cell_via_signal(tria);
@@ -115,7 +122,7 @@ void test()
       // Note that only the own marked cells will be refined.
       // But refine flags on own cells could be effected by flags on ghost cells
       // through mesh smoothing.
-      for (unsigned int i=0; i<tria.n_active_cells() / 5 + 1; ++i)
+      for (unsigned int i=0; i<tria.n_active_cells() / 3 + 1; ++i)
         {
           const unsigned int x = Testing::rand() % flags.size();
           flags[x] = true;
