@@ -29,6 +29,10 @@
 // calls and then compare the result against n_active_cells reported by Tria
 // object. Absolute value change in n_active_cells is not concerned in this test.
 
+// This test is based on tria_signals_02. The difference is in this case we know
+// that p4est is doing mesh smoothing beyond class Triangulation. The case setup
+// is borrowed from tests/distributed_grids/2d_refinement_10.
+
 template<int dim, int spacedim>
 class SignalListener
 {
@@ -92,28 +96,48 @@ void test()
 
   TriaType tria(MPI_COMM_WORLD);
 
-  GridGenerator::hyper_cube(tria);
-  SignalListener<dim, spacedim> count_cell_via_signal(tria);
-
-  tria.refine_global(2);
-
-  deallog << "n_cell_gap after refine : "
-          << count_cell_via_signal.n_active_cell_gap() << std::endl;
-
-  // Test signal on coarsening
   {
-    typename TriaType::active_cell_iterator cell = tria.begin_active();
-    const typename TriaType::active_cell_iterator endc = tria.end();
+    std::vector<unsigned int> repetitions;
+    Point<dim> p1;
+    Point<dim> p2;
 
-    for (; cell != endc; ++cell)
+    for (unsigned int d=0; d<dim; ++d)
       {
-        cell->set_coarsen_flag();
+        repetitions.push_back (2);
+        p1[d] = 0.0;
+        p2[d] = 1.0;
       }
-    tria.execute_coarsening_and_refinement();
+    GridGenerator::subdivided_hyper_rectangle (tria,
+                                               repetitions,
+                                               p1,
+                                               p2);
   }
 
-  deallog << "n_cell_gap after coarsen : "
-          << count_cell_via_signal.n_active_cell_gap() << std::endl;
+  SignalListener<dim, spacedim> count_cell_via_signal(tria);
+
+  for (unsigned int n_loop = 1; n_loop < 5; ++n_loop)
+    {
+      {
+        Point<dim> p;
+        for (unsigned int d=0; d<dim; ++d)
+          {
+            p[d] = 0.5 - std::pow(0.5, 1.0 + n_loop);
+          }
+        typename TriaType::active_cell_iterator
+        cell = tria.begin_active();
+        for (; cell!= tria.end(); ++cell)
+          if (cell->is_locally_owned() && ((cell->center()).distance(p) < 1e-4))
+            {
+              cell->set_refine_flag();
+            }
+      }
+
+      tria.execute_coarsening_and_refinement ();
+
+      deallog << "n_loop: " << n_loop
+              << ", n_cell_gap: "
+              << count_cell_via_signal.n_active_cell_gap() << std::endl;
+    }
 
   deallog.pop();
   return;
@@ -131,11 +155,8 @@ int main(int argc, char *argv[])
     test<dim,spacedim> ();
   }
 
-  {
-    const int dim = 2;
-    const int spacedim = 3;
-    test<dim,spacedim> ();
-  }
+  // GridGenerator::subdivided_hyper_rectangle do not accept
+  // parallel::distributed::Triangulation<2, 3>.
 
   {
     const int dim = 3;
