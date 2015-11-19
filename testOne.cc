@@ -162,6 +162,10 @@ void test()
                           sparsity_pattern,
                           mpi_communicator);
 #endif
+    if (myid == 1)
+      {
+        std::cout << "(4, 5) exists?  " << sparsity_pattern.exists(4, 5) << std::endl;
+      }
   }
 
   // Pretend to assemble system, just write something into system matrix
