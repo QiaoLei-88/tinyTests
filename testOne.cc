@@ -18,6 +18,7 @@
 
 #include <deal.II/base/utilities.h>
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_out.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_q.h>
@@ -117,6 +118,11 @@ void test()
         std::ofstream master_output ((output_tag + ".pvtu").c_str());
         data_out.write_pvtu_record (master_output, filenames);
       }
+
+    // Write mesh on processor view
+    std::ofstream output_per_node(("mesh" + slot_itag + ".vtu").c_str());
+    GridOut grid_out;
+    grid_out.write_vtu (triangulation, output_per_node);
   }
 
   // Setup system
