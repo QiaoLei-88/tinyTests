@@ -19,7 +19,26 @@
 #include <fstream>
 #include <ostream>
 
+#include <deal.II/base/utilities.h>
+
+/*
+ * Purpose:
+ *   1. Combine separated file written by parallel processors;
+ *   2. Sort data according to coordinate;
+ *   3. Compute local Mach number and pressure coefficient.
+ */
+
 template<int dim>
+class DataProcessor
+{
+public:
+  DataProcessor(const std::string &file_name_prefix_in);
+private:
+  void run() const;
+
+  const std::string    &file_name_prefix;
+  const unsigned int    solution_component = dim + 2;
+};
 
 
 int main(int argc, char *argv[])
@@ -33,8 +52,21 @@ int main(int argc, char *argv[])
   deallog.threshold_double(1.e-10);
 
   deallog.push("2d");
-  test<2>();
+
   deallog.pop();
 
   return (0);
+}
+
+template<int dim>
+DataProcessor<dim>::DataProcessor(const std::string &file_name_prefix_in)
+  :
+  file_name_prefix(file_name_prefix_in)
+{}
+
+template<int dim>
+void
+DataProcessor<dim>::run() const
+{
+  return;
 }
