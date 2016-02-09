@@ -160,6 +160,11 @@ DataProcessor<dim>::run() const
               // Z-up configuration in 3D is assumed.
               x_index = std::copysign(x_index, data_struct.position[dim-1]);
             }
+          else if (data_struct.position[dim-1] > 0.9)
+            {
+              // Order date counter clock wise for GAMM Channel case
+              x_index = -3.0 - x_index;
+            }
 
           // Insert new entry
           data_map[x_index] = data_struct;
